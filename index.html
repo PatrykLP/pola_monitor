@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#6f8b6a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Monitor Poli">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+<title>Monitor Poli</title>
+</head>
+<body>
+
+  <header>
+    <h1>Monitor Poli</h1>
+    <div class="sub" id="dateLine">—</div>
+  </header>
+
+  <div class="banner temp" id="bannerTemp">
+    <b>Czas zmierzyć temperaturę</b>
+    Minęła godzina od ostatniego pomiaru.
+  </div>
+
+  <div class="banner warn" id="bannerParaCheck">
+    <b>Sprawdź gorączkę</b>
+    Minęły 3h od ibuprofenu — jeśli temperatura nadal ≥ 38°C, lekarz zalecił podać paracetamol.
+  </div>
+
+  <div class="banner info" id="bannerNotify">
+    <b>Włącz przypomnienia</b>
+    Aplikacja może przypominać co godzinę o pomiarze temperatury.
+    <button class="inline-btn" onclick="enableNotifications()">Włącz powiadomienia</button>
+  </div>
+
+  <section class="card">
+    <h2>Stan na teraz</h2>
+    <div class="status-row">
+      <span class="label">Ostatni pomiar</span>
+      <span class="val" id="lastTemp">—</span>
+    </div>
+    <div class="status-row">
+      <span class="label">Ostatni ibuprofen</span>
+      <span class="val" id="lastIbu">—</span>
+    </div>
+    <div class="status-row">
+      <span class="label">Ostatni paracetamol</span>
+      <span class="val" id="lastPara">—</span>
+    </div>
+    <div class="status-row">
+      <span class="label">Kolejny ibuprofen</span>
+      <span class="val" id="nextIbu">—</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Dziś łącznie</h2>
+    <div class="totals">
+      <div class="box">
+        <div class="drug-name ibu">Ibuprofen</div>
+        <div class="n" id="totalIbuCount">0</div>
+        <div class="l">dawki (z 3 zaleconych)</div>
+        <div class="l amount" id="totalIbuAmount">0 ml / 0 mg</div>
+      </div>
+      <div class="box">
+        <div class="drug-name para">Paracetamol</div>
+        <div class="n" id="totalParaCount">0</div>
+        <div class="l">dawki</div>
+        <div class="l amount" id="totalParaAmount">0 ml / 0 mg</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button class="btn-temp" onclick="openTempModal()">🌡️ Zmierz temperaturę</button>
+    <button class="btn-drug" id="btnIbu" onclick="logDose('ibu')">
+      Podaj ibuprofen<span class="dose">2,5 ml / 100 mg</span>
+    </button>
+    <button class="btn-drug" id="btnPara" onclick="logDose('para')">
+      Podaj paracetamol<span class="dose">1,8 ml / 180 mg</span>
+    </button>
+  </div>
+
+  <button class="manual-link" onclick="openManualModal()">+ Dodaj wpis z inną godziną</button>
+
+  <section class="card">
+    <h2>Historia dnia</h2>
+    <ul class="log" id="logList">
+      <li class="empty">Brak wpisów — zacznij od pomiaru temperatury.</li>
+    </ul>
+  </section>
+
+  <section class="card chart-card">
+    <h2>Temperatura i leki w ciągu dnia</h2>
+    <div id="chartAll"></div>
+    <div class="chart-legend">
+      <span><span class="dot sage"></span> temp.</span>
+      <span><span class="dot clay-deep"></span> ≥ 38°C</span>
+      <span><span class="dot clay"></span> ibuprofen</span>
+      <span><span class="dot purple"></span> paracetamol</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Poprzednie dni</h2>
+    <div id="historyDays"><div class="empty">Brak zapisanych dni.</div></div>
+  </section>
+
+  <div class="tools">
+    <button onclick="exportData()">Eksportuj</button>
+    <button onclick="document.getElementById('importFile').click()">Importuj</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json" hidden onchange="importData(event)">
+  <button class="reset-link" onclick="resetDay()">Wyczyść dzisiejsze wpisy</button>
+
+  <p class="footer-note">
+    Narzędzie tylko do zapisywania pomiarów i dawek zgodnie z zaleceniem lekarza.
+    Nie zastępuje kontaktu z lekarzem — w razie niepokojących objawów dzwoń do pediatry lub NPL.
+  </p>
+
+  <!-- modal: temperatura -->
+  <div class="overlay" id="tempOverlay">
+    <div class="sheet">
+      <h3>Temperatura Poli (°C)</h3>
+      <input type="number" step="0.1" inputmode="decimal" id="tempInput" placeholder="np. 38.4">
+      <div class="sheet-actions">
+        <button class="btn-cancel" onclick="closeTempModal()">Anuluj</button>
+        <button class="btn-confirm" onclick="confirmTemp()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- modal: wpis ręczny -->
+  <div class="overlay" id="manualOverlay">
+    <div class="sheet">
+      <h3>Dodaj wpis z inną godziną</h3>
+      <label>Rodzaj wpisu</label>
+      <select id="manualType" onchange="toggleManualValue()">
+        <option value="temp">Temperatura</option>
+        <option value="ibu">Ibuprofen (2,5 ml / 100 mg)</option>
+        <option value="para">Paracetamol (1,8 ml / 180 mg)</option>
+      </select>
+      <label>Data</label>
+      <input type="date" id="manualDate">
+      <label>Godzina</label>
+      <input type="time" id="manualTime">
+      <div id="manualValueWrap">
+        <label>Temperatura (°C)</label>
+        <input type="number" step="0.1" inputmode="decimal" id="manualTempValue" placeholder="np. 39.3">
+      </div>
+      <div class="sheet-actions">
+        <button class="btn-cancel" onclick="closeManualModal()">Anuluj</button>
+        <button class="btn-confirm" onclick="confirmManual()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>
