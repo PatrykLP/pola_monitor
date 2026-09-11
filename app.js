@@ -98,17 +98,37 @@ function deleteEntry(iso, type){
 function logTemp(value, iso){
   addEntry({ type:'temp', value, time: iso || new Date().toISOString() });
 }
+function fmtGap(hours){
+  // zaokrąglamy do pełnych minut, inaczej 3,999h daje „3h 60min”
+  const total = Math.round(hours * 60);
+  return Math.floor(total / 60) + 'h ' + (total % 60) + 'min';
+}
+
 function logDose(kind, iso){
   const cfg = kind === 'ibu' ? CONFIG.IBU : CONFIG.PARA;
-  const last = getLast(kind);
-  if(!iso && last){
-    const gap = hoursSince(last.time);
-    if(gap < cfg.minGapH){
-      const remaining = (cfg.minGapH - gap);
-      const h = Math.floor(remaining);
-      const m = Math.round((remaining - h) * 60);
-      const label = kind === 'ibu' ? 'ibuprofenu' : 'paracetamolu';
-      if(!confirm(`Od ostatniej dawki ${label} minęło mniej niż ${cfg.minGapH}h (zostało ok. ${h}h ${m}min). Na pewno podać teraz?`)) return;
+  const label = kind === 'ibu' ? 'ibuprofenu' : 'paracetamolu';
+
+  if(iso){
+    // wpis wstecz: porównaj z dawkami już zapisanymi w tym dniu (przed i po podanej godzinie)
+    const same = loadDay(dayKey(new Date(iso))).filter(e => e.type === kind);
+    const warn = [];
+    if(cfg.maxPerDay && same.length >= cfg.maxPerDay){
+      warn.push(`W tym dniu jest już ${cfg.maxPerDay} dawki ${label}.`);
+    }
+    const nearest = same
+      .map(e => Math.abs(new Date(iso) - new Date(e.time)) / 3600000)
+      .sort((a,b) => a - b)[0];
+    if(nearest !== undefined && nearest < cfg.minGapH){
+      warn.push(`Obok jest dawka ${label} w odstępie ${fmtGap(nearest)} — mniej niż zalecane ${cfg.minGapH}h.`);
+    }
+    if(warn.length && !confirm(warn.join('\n\n') + '\n\nZapisać mimo to?')) return;
+  } else {
+    const last = getLast(kind);
+    if(last){
+      const gap = hoursSince(last.time);
+      if(gap < cfg.minGapH){
+        if(!confirm(`Od ostatniej dawki ${label} minęło mniej niż ${cfg.minGapH}h (zostało ok. ${fmtGap(cfg.minGapH - gap)}). Na pewno podać teraz?`)) return;
+      }
     }
   }
   addEntry({ type: kind, ml: cfg.ml, mg: cfg.mg, time: iso || new Date().toISOString() });
@@ -295,7 +315,10 @@ function renderChart(){
   const ibu   = entries.filter(e=>e.type==='ibu').sort((a,b)=> new Date(a.time)-new Date(b.time));
   const para  = entries.filter(e=>e.type==='para').sort((a,b)=> new Date(a.time)-new Date(b.time));
 
-  const yMin = 35.5, yMax = 40.5;
+  // domyślne okno 35,5–40,5°C, rozszerzane o wartości skrajne, żeby nic nie wyjechało poza wykres
+  const vals = temps.map(e => e.value);
+  const yMin = Math.min(35.5, ...vals.map(v => v - 0.5));
+  const yMax = Math.max(40.5, ...vals.map(v => v + 0.5));
   const yScale = v => PAD_T + (1 - (v-yMin)/(yMax-yMin)) * (TEMP_BOTTOM-PAD_T);
 
   let svg = `<svg viewBox="0 0 ${CHART_W} ${CHART_H}" role="img" aria-label="Wykres temperatury i dawek leków">`;

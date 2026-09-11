@@ -6,7 +6,7 @@ zgodnie z zaleceniem lekarza. Działa offline, instaluje się na ekranie główn
 ## Struktura
 
 ```
-monitor-poli/
+pola_monitor/
 ├── index.html      # struktura strony
 ├── styles.css      # wygląd (+ tryb ciemny)
 ├── app.js          # cała logika: wpisy, wykres, powiadomienia
@@ -20,11 +20,10 @@ monitor-poli/
 PWA wymaga serwera HTTP (nie zadziała z `file://`):
 
 ```bash
-cd monitor-poli
 python3 -m http.server 8000
 ```
 
-Otwórz `http://localhost:8000`.
+Otwórz `http://localhost:8000` (komendę uruchom w katalogu repozytorium).
 
 ## Publikacja (żeby mieć to na telefonie)
 
@@ -37,6 +36,10 @@ Najprościej — GitHub Pages:
    iPhone (Safari): Udostępnij → „Do ekranu początkowego".
 
 Alternatywy: Netlify (przeciągnij folder na netlify.com/drop), Vercel, Cloudflare Pages.
+
+**Prywatne repozytorium:** Pages dla repo prywatnego wymaga planu GitHub Pro — na planie
+Free działa tylko dla repozytoriów publicznych. Cloudflare Pages i Netlify podłączają
+prywatne repo także na darmowym planie.
 
 **Ważne:** powiadomienia i instalacja działają tylko po HTTPS (lub na localhost).
 Na iPhonie powiadomienia działają dopiero po dodaniu do ekranu początkowego (iOS 16.4+).
@@ -69,8 +72,13 @@ Zmieniaj **tylko po konsultacji z lekarzem**.
 - wykres: krzywa temperatury + dawki obu leków na wspólnej osi czasu
 - podsumowanie poprzednich dni (max temperatura, liczba dawek)
 - eksport/import wszystkich danych do pliku JSON
-- powiadomienia systemowe co godzinę o pomiarze
+- przypomnienie o pomiarze co godzinę (z ograniczeniem opisanym niżej)
 - pełne działanie offline
+
+**Jak działają przypomnienia:** to timer w działającej stronie, nie Web Push. Przypomnienie
+przyjdzie, dopóki aplikacja jest otwarta lub świeżo w tle — gdy system usunie ją z pamięci,
+nie przyjdzie. Po ponownym otwarciu odliczanie przelicza się od ostatniego pomiaru, więc
+baner „czas zmierzyć temperaturę" pojawi się od razu.
 
 ## Uwaga
 
