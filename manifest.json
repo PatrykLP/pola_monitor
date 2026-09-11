@@ -1,6 +1,6 @@
 {
-  "name": "Monitor Poli — gorączka i leki",
-  "short_name": "Monitor Poli",
+  "name": "Child Monitor — gorączka i leki",
+  "short_name": "Child Monitor",
   "description": "Zapis pomiarów temperatury i dawek leków u dziecka, zgodnie z zaleceniem lekarza.",
   "start_url": "./index.html",
   "scope": "./",

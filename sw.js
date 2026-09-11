@@ -1,5 +1,5 @@
 /* Service worker — cache offline + obsługa kliknięcia w powiadomienie */
-const CACHE = 'monitor-poli-v2';
+const CACHE = 'child-monitor-v1';
 const ASSETS = [
   './',
   './index.html',

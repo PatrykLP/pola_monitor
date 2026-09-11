@@ -1,10 +1,9 @@
 /* ============================================================
-   Monitor Poli — logika aplikacji
+   Child Monitor — logika aplikacji
    Dawki wg zalecenia lekarza. Zmieniaj TYLKO po konsultacji.
    ============================================================ */
 
 const CONFIG = {
-  CHILD_NAME: 'Pola',
   IBU: { ml: 2.5, mg: 100, minGapH: 6, maxPerDay: 3 },
   PARA: { ml: 1.8, mg: 180, minGapH: 4 },
   PARA_CHECK_AFTER_H: 3,   // po ilu h od ibuprofenu sprawdzić gorączkę
@@ -12,7 +11,8 @@ const CONFIG = {
   TEMP_REMINDER_H: 1       // przypomnienie o pomiarze co X godzin
 };
 
-const STORAGE_PREFIX = 'monitorPoli:';
+const STORAGE_PREFIX = 'childMonitor:';
+const OLD_STORAGE_PREFIX = 'monitorPoli:';
 let todayKey = dayKey(new Date());
 let entries = [];
 let reminderTimer = null;
@@ -44,6 +44,21 @@ function makeISO(dateStr, hhmm){
 }
 
 /* ---------- zapis / odczyt ---------- */
+// jednorazowe przeniesienie danych po zmianie nazwy aplikacji
+function migrateStorage(){
+  try{
+    const stale = [];
+    for(let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if(k && k.startsWith(OLD_STORAGE_PREFIX)) stale.push(k);
+    }
+    stale.forEach(k => {
+      const target = STORAGE_PREFIX + k.slice(OLD_STORAGE_PREFIX.length);
+      if(localStorage.getItem(target) === null) localStorage.setItem(target, localStorage.getItem(k));
+      localStorage.removeItem(k);
+    });
+  }catch(e){ console.warn('Migracja nieudana', e); }
+}
 function loadDay(key = todayKey){
   try{
     const raw = localStorage.getItem(STORAGE_PREFIX + key);
@@ -208,12 +223,12 @@ function confirmManual(){
 function exportData(){
   const all = {};
   allDayKeys().forEach(k => { all[k] = loadDay(k); });
-  const blob = new Blob([JSON.stringify({ app:'monitor-poli', version:1, days: all }, null, 2)],
+  const blob = new Blob([JSON.stringify({ app:'child-monitor', version:1, days: all }, null, 2)],
     { type:'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'monitor-poli-' + todayKey + '.json';
+  a.download = 'child-monitor-' + todayKey + '.json';
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -266,7 +281,7 @@ async function enableNotifications(){
 
 function notifyTempCheck(){
   if(!notificationsGranted()) return;
-  const body = `Minęła godzina od ostatniego pomiaru u ${CONFIG.CHILD_NAME}.`;
+  const body = 'Minęła godzina od ostatniego pomiaru.';
   if(navigator.serviceWorker && navigator.serviceWorker.ready){
     navigator.serviceWorker.ready.then(reg => {
       reg.showNotification('Zmierz temperaturę', {
@@ -477,6 +492,7 @@ function render(){
 
 /* ---------- start ---------- */
 function init(){
+  migrateStorage();
   entries = loadDay(todayKey);
   render();
   scheduleReminder();
